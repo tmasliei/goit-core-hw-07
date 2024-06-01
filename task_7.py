@@ -1,33 +1,33 @@
 from datetime import datetime
 from collections import UserDict
 
-class Field: 
+class Field:  # Base class of record fields
     def __init__(self, value):
         self.value = value
 
     def __str__(self):
         return str(self.value)
 
-class Name(Field): 
+class Name(Field):  # The contact name storage class. Mandatory field.
     def __init__(self, name):
         if not name:
             raise ValueError("Name must not be empty.")
         super().__init__(name)
 
-class Phone(Field): 
+class Phone(Field):  # Phone number storage class. checks the phone (10 digits).
     def __init__(self, phone):
         if not phone.isdigit() or len(phone) != 10:
             raise ValueError("Phone number must have 10 digits.")
         super().__init__(phone)
 
-class Birthday(Field):
+class Birthday(Field):  # Date of birth storage class.
     def __init__(self, value):
         try:
             self.value = datetime.strptime(value, "%d.%m.%Y").date()
         except ValueError:
             raise ValueError("Invalid date format. Use DD.MM.YYYY")
 
-class Record: 
+class Record:  # Class for storing contact information. Name and phone list
     def __init__(self, name):
         self.name = Name(name)
         self.phones = []
@@ -71,7 +71,7 @@ class Record:
         birthday_str = str(self.birthday.value.strftime("%d.%m.%Y")) if self.birthday else 'Not specified'
         return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}, birthday: {birthday_str}"
 
-class AddressBook(UserDict): # Клас для зберігання та управління записами.
+class AddressBook(UserDict):  # Record storage and management class
     def add_record(self, record):
         self.data[record.name.value] = record
 
@@ -79,9 +79,10 @@ class AddressBook(UserDict): # Клас для зберігання та упр�
         return self.data.get(name)
 
     def delete(self, name):
-        self.name = name
         if name in self.data:
             del self.data[name]
+        else:
+            raise ValueError("Name not found")
 
     def get_upcoming_birthdays(self):
         today = datetime.today().date()
@@ -92,20 +93,20 @@ class AddressBook(UserDict): # Клас для зберігання та упр�
                 if birthday_this_year < today:
                     continue
                 elif (birthday_this_year - today).days < 7:
-                    if birthday_this_year.weekday() == 5: # Saturday
-                        birthday_this_year = datetime(birthday_this_year.year, birthday_this_year.month, birthday_this_year.day + 2).date() # Changing the day to Monday
-                    elif birthday_this_year.weekday() == 6: # Sunday
-                        birthday_this_year = datetime(birthday_this_year.year, birthday_this_year.month, birthday_this_year.day + 1).date() # Changing the day to Monday
+                    if birthday_this_year.weekday() == 5:  # Субота
+                        birthday_this_year += timedelta(days=2)  # Change for Monday
+                    elif birthday_this_year.weekday() == 6:  # Неділя
+                        birthday_this_year += timedelta(days=1)  # Change for Monday
                     user_info = {"name": user.name.value, "congratulation_date": birthday_this_year.strftime("%d.%m.%Y")}
                     upcoming_birthdays.append(user_info)
         return upcoming_birthdays
 
-def input_error(func): # Function - decorator for errors handling
+def input_error(func):  # Exception handling decorator function.
     def inner(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except KeyError:
-            return "This command can not be executed."
+            return "This command cannot be executed."
         except ValueError:
             return "Give me name and phone please."
         except IndexError:
@@ -148,14 +149,26 @@ def birthdays(args, book):
     else:
         print("No upcoming birthdays.")
 
-def parse_input(user_input): 
+def parse_input(user_input):  # Input parsing.
     if not user_input.strip():
         return "", []
     cmd, *args = user_input.split()
     cmd = cmd.strip().lower()
     return cmd, args
 
+def print_help():
+    print("Available commands:")
+    print("  add <name> <phone>            - Add a new contact")
+    print("  change <name> <new_phone>     - Change phone number of a contact")
+    print("  phone <name>                  - Show phone number of a contact")
+    print("  all                           - Show all contacts")
+    print("  add-birthday <name> <birthday> - Add birthday to a contact (format DD.MM.YYYY)")
+    print("  show-birthday <name>          - Show birthday of a contact")
+    print("  birthdays                     - Show upcoming birthdays")
+    print("  help                          - Show this help message")
+    print("  close/exit                    - Exit the program")
 
+# Main function
 def main():
     book = AddressBook()
     print("Welcome to the assistant bot!")
@@ -178,6 +191,9 @@ def main():
                 print("Invalid number of arguments.")
                 continue
             name, phone = args
+            if not phone.isdigit() or len(phone) != 10:  # input validation
+                print("Phone number must be a 10-digit number.")
+                continue
             record = Record(name)
             record.add_phone(phone)
             book.add_record(record)
@@ -187,9 +203,12 @@ def main():
             if len(args) != 2:
                 print("Invalid number of arguments.")
                 continue
+            if not phone.isdigit() or len(phone) != 10:  # input validation
+                print("Phone number must be a 10-digit number.")
+                continue
             name, new_phone = args
             record = book.find(name)
-            if record:
+            if record: 
                 record.edit_phone(record.phones[0].value, new_phone)
                 print(f"Phone number changed for {name}.")
             else:
@@ -226,8 +245,12 @@ def main():
         elif command == "birthdays":
             birthdays(args, book)
 
-        else:
-            print("Invalid command.")
+        elif command == "help":
+            print_help()
 
-if __name__ == "__main__":
-    main()
+        else:
+            print("Invalid command. Type 'help' to see available commands.")
+
+# Program entry point
+if __name__ == "__main__": 
+    main() # Call the main function of the program.
